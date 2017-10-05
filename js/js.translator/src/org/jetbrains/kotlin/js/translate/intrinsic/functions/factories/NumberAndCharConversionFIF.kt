@@ -33,9 +33,9 @@ object NumberAndCharConversionFIF : CompositeFIF() {
             .or(pattern("Long.toLong"))
             .or(pattern("Char.toChar"))
 
-    private val convertOperations: Map<String, ConversionUnaryIntrinsic> =
+    private val convertOperations: Map<String, FunctionIntrinsicWithReceiverComputed> =
             mapOf(
-                    "Float|Double.toInt" to ConversionUnaryIntrinsic(::toInt32),
+                    "Float|Double.toInt" to KotlinAliasedFunctionIntrinsic("doubleToInt"),
                     "Int|Float|Double.toShort" to ConversionUnaryIntrinsic(::toShort),
                     "Short|Int|Float|Double.toByte" to ConversionUnaryIntrinsic(::toByte),
 
