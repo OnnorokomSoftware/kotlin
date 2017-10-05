@@ -27,7 +27,14 @@ import org.gradle.api.tasks.SourceSetContainer
 import org.jetbrains.kotlin.gradle.dsl.KotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
 
-abstract class KotlinPlatformPluginBase(protected val platformName: String) : Plugin<Project>
+abstract class KotlinPlatformPluginBase(protected val platformName: String) : Plugin<Project> {
+    companion object {
+        @JvmStatic
+        protected inline fun <reified T : Plugin<*>> Project.applyPlugin() {
+            pluginManager.apply(T::class.java)
+        }
+    }
+}
 
 open class KotlinPlatformCommonPlugin : KotlinPlatformPluginBase("common") {
     override fun apply(project: Project) {
@@ -71,14 +78,31 @@ open class KotlinPlatformImplementationPluginBase(platformName: String) : Kotlin
 
             commonProject.sourceSets.all { commonSourceSet ->
                 // todo: warn if not found
-                val platformTask = platformKotlinTasksBySourceSetName[commonSourceSet.name]
-                commonSourceSet.kotlin!!.srcDirs.forEach { platformTask?.source(it) }
+                addCommonSourceSetToPlatformSourceSet(commonSourceSet)
             }
         }
     }
 
-    private val SourceSet.kotlin: SourceDirectorySet?
+    protected fun addCommonSourceSetToPlatformSourceSet(commonSourceSet: SourceSet) {
+        val platformTask = platformKotlinTasksBySourceSetName[commonSourceSet.name]
+        commonSourceSet.kotlin!!.srcDirs.forEach { platformTask?.source(it) }
+    }
+
+    protected val SourceSet.kotlin: SourceDirectorySet?
             get() = ((getConvention("kotlin") ?: getConvention("kotlin2js")) as? KotlinSourceSet)?.kotlin
+
+    companion object {
+        @JvmStatic
+        protected fun <T> Project.whenEvaluated(fn: Project.() -> T) {
+            if (state.executed) {
+                fn()
+            }
+            else {
+                afterEvaluate { it.fn() }
+            }
+        }
+    }
+
 }
 
 open class KotlinPlatformJvmPlugin : KotlinPlatformImplementationPluginBase("jvm") {
@@ -97,16 +121,3 @@ open class KotlinPlatformJsPlugin : KotlinPlatformImplementationPluginBase("js")
 
 private val Project.sourceSets: SourceSetContainer
     get() = convention.getPlugin(JavaPluginConvention::class.java).sourceSets
-
-private fun <T> Project.whenEvaluated(fn: Project.()->T) {
-    if (state.executed) {
-        fn()
-    }
-    else {
-        afterEvaluate { it.fn() }
-    }
-}
-
-private inline fun <reified T : Plugin<*>> Project.applyPlugin() {
-    pluginManager.apply(T::class.java)
-}
